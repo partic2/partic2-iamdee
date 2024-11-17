@@ -43,6 +43,7 @@ namespace Iamdee {
     undef: (moduleId:string) => void;
     getConfig:()=>Config;
     getDefined:()=>{[name:string]:any};
+    localRequireModule:string
   }
 
   export type AnonymousDefineWithDependenciesArgs = [string[], DefineFactory];
@@ -382,7 +383,9 @@ namespace Iamdee {
       dependencyIds.forEach(function(id) {
         request(id, dependencyReadyCallback);
       });
-      setTimeout(dependencyReadyCallback);
+      globalThis.queueMicrotask?
+        globalThis.queueMicrotask(dependencyReadyCallback):
+        setTimeout(dependencyReadyCallback);
     } as Iamdee.RequireFunction;
     require.config = config;
     require.undef = function(moduleId:string){
@@ -401,6 +404,7 @@ namespace Iamdee {
       }
       return r;
     }
+    require.localRequireModule=moduleId
     return require;
   }
 
@@ -496,15 +500,15 @@ namespace Iamdee {
 
 
   const define = function(...args:Iamdee.DefineArgs) {
-    let expectedModuleId:string|null=null;
-    for(let t1 of scriptLoaders){
-      expectedModuleId=t1.getDefiningModule();
-      if(expectedModuleId!=null)break;
-    }
 
     let dependencies = ["require", "exports", "module"];
 
     if (isAnonymousDefine(args)) {
+      let expectedModuleId:string|null=null;
+      for(let t1 of scriptLoaders){
+        expectedModuleId=t1.getDefiningModule();
+        if(expectedModuleId!=null)break;
+      }
       if (!expectedModuleId) {
         throw Error("#1");
       }
@@ -515,12 +519,6 @@ namespace Iamdee {
       }
     } else {
       const id = args[0] as ModuleId;
-      if (expectedModuleId && expectedModuleId != id) {
-        return resolveModule(id, {
-          moduleState: ModuleState.ERROR,
-          moduleError: Error("#2")
-        });
-      }
       if (isNamedDefineWithDependencies(args)) {
         doDefine(id, args[1], args[2]);
       } else {
