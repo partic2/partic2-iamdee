@@ -43,6 +43,7 @@ namespace Iamdee {
     undef: (moduleId:string) => void;
     getConfig:()=>Config;
     getDefined:()=>{[name:string]:any};
+    getFailed:()=>{[name:string]:{error:Error}}
     localRequireModule:string
   }
 
@@ -395,7 +396,7 @@ namespace Iamdee {
       return config1;
     }
     require.getDefined=function(){
-      let r={} as any;
+      let r:Record<string,any>={};
       for(let k in moduleMap){
         let mod=moduleMap[k];
         if(mod.moduleState===ModuleState.INITIALIZED){
@@ -404,6 +405,17 @@ namespace Iamdee {
       }
       return r;
     }
+    require.getFailed=function(){
+      let r:Record<string,{error:Error}>={};
+      for(let k in moduleMap){
+        let mod=moduleMap[k];
+        if(mod.moduleState===ModuleState.ERROR){
+          r[k]={error:mod.moduleError};
+        }
+      }
+      return r;
+    }
+
     require.localRequireModule=moduleId
     return require;
   }
