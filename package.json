@@ -7,18 +7,13 @@
     "prepublishOnly": "npm run lint && npm run build && npm run test",
     "clean": "rm -rf ./dist/",
     "ci": "npm run lint && npm run build && npm test",
-    "build": "tsc && npm run min-old && npm run min-modern",
-    "min": "npx google-closure-compiler --js=./dist/index.js --language_in=ECMASCRIPT5 --compilation_level=ADVANCED --language_out=ECMASCRIPT5 --define=IAMDEE_PRODUCTION_BUILD",
-    "min-old": "npm run min -- --js_output_file=dist/index.min.js",
-    "min-modern": "npm run min -- --js_output_file=dist/index.modern.min.js --define=IAMDEE_MODERN_BROWSER",
+    "build": "tsc",
     "test": "intern config=@min && intern config=@requirejs",
     "lint": "tslint --project ."
   },
   "files": [
     "dist/index.d.ts",
-    "dist/index.js",
-    "dist/index.min.js",
-    "dist/index.modern.min.js"
+    "dist/index.js"
   ],
   "keywords": [
     "amd",
@@ -27,15 +22,5 @@
     "small"
   ],
   "author": "iamdee by Dmitriy Kubyshkin <dmitriy@kubyshkin.name> patched by partic2",
-  "license": "MIT",
-  "devDependencies": {
-    "intern": "^4.2.4",
-    "google-closure-compiler": "^20180805.0.0",
-    "prettier": "^1.14.2",
-    "requirejs": "^2.3.6",
-    "tslint": "^5.11.0",
-    "tslint-config-prettier": "^1.15.0",
-    "tslint-plugin-prettier": "^1.3.0",
-    "typescript": "^3.0.3"
-  }
+  "license": "MIT"
 }

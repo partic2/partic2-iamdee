@@ -15,6 +15,11 @@ namespace Iamdee {
     urlArgs?: string;
     onNodeCreated?: NodeCreatedCallback;
     IAMDEE_PRODUCTION_BUILD?:boolean;
+    //importScripts is a little weird in service worker.
+    //So we use config.serviceWorkerFetch(set to globalThis.fetch by default) in service worker to load script by default.
+    serviceWorkerFetch?:typeof fetch;
+    //To hook the define function.
+    onDefining?:(defineParameter:{moduleId:string,dependencies:string[],factory: Iamdee.DefineFactory})=>void
   }
 
   export interface RequireCallback {
@@ -93,7 +98,16 @@ namespace Iamdee {
     new Function('this.globalThis=this')()
   }
   let scriptLoaders:Iamdee.ScriptLoader[] = [];
-  class BrowserScriptLoader implements Iamdee.ScriptLoader{
+  let config1 = {
+    baseUrl:'./',
+    serviceWorkerFetch:globalThis.fetch
+  } as Iamdee.Config;
+  function panic(message: string) {
+    if (!config1.IAMDEE_PRODUCTION_BUILD) {
+      throw Error(message);
+    }
+  }
+  class HTMLTagScriptLoader implements Iamdee.ScriptLoader{
     loadModule(moduleId: string, url: string, done: (err: Error | null) => void): void {
       // Adding new script to the browser. Since it is inserted
       // dynamically it will be "async" by default
@@ -116,7 +130,7 @@ namespace Iamdee {
       return null;
     }
   }
-  class BrowserWorkerScriptLoader implements Iamdee.ScriptLoader{
+  class ImportScriptsScriptLoader implements Iamdee.ScriptLoader{
     currentDefining:string|null=null;
     loadModule(moduleId: string, url: string, done: (err: Error | null) => void): void {
       this.currentDefining=moduleId;
@@ -133,10 +147,42 @@ namespace Iamdee {
       return this.currentDefining;
     }
   }
+  class ServiceWorkerScriptLoader implements Iamdee.ScriptLoader{
+    currentDefining:null|string=null;
+    loadModule(moduleId: string, url: string, done: (err: Error | null) => void): void {
+        let that=this;
+        let resp0:Response;
+        config1.serviceWorkerFetch!(url).then((resp)=>{
+            resp0=resp;
+            return resp.text()
+        }).then(function(respText){
+            if(!resp0.ok){
+                throw new Error('fetch respond with '+resp0.status);
+            }
+            that.currentDefining=moduleId;
+            try{
+                (new Function(respText))();
+                done(null);
+            }finally{
+                that.currentDefining=null;
+            }
+        }).catch(function(err){
+            done(err);
+        })
+    }
+    getDefiningModule(): string | null {
+        return this.currentDefining;
+    }
+  }
   if(globalThis.window!=undefined && globalThis.document!=undefined){
-    scriptLoaders.push(new BrowserScriptLoader());
+    scriptLoaders.push(new HTMLTagScriptLoader());
   }else if(globalThis.self!=undefined && typeof((globalThis as any).importScripts)=='function'){
-    scriptLoaders.push(new BrowserWorkerScriptLoader());
+    if('registration' in globalThis && 'clients' in globalThis){
+      //service worker
+      scriptLoaders.push(new ServiceWorkerScriptLoader());
+    }else{
+      scriptLoaders.push(new ImportScriptsScriptLoader());
+    }
   }
 
   const enum ModuleState {
@@ -194,13 +240,7 @@ namespace Iamdee {
 
   const moduleMap: { [key: string]: Module } = {};
   function noop() {}
-
-  function panic(message: string) {
-    if (!config1.IAMDEE_PRODUCTION_BUILD) {
-      throw Error(message);
-    }
-  }
-  let config1 = {baseUrl:'./'} as Iamdee.Config;
+  
 
   function isAnonymousDefine(
     args: Iamdee.DefineArgs
@@ -465,6 +505,13 @@ namespace Iamdee {
     dependencies: string[],
     factory: Iamdee.DefineFactory
   ) {
+    if(config1.onDefining!=undefined){
+      const p={moduleId:id,dependencies:dependencies,factory:factory}
+      config1.onDefining(p);
+      id=p.moduleId;
+      dependencies=p.dependencies;
+      factory=p.factory;
+    }
     const existingModule = moduleMap[id];
     const definedModule: DefinedModule = {
       moduleState: ModuleState.DEFINED,

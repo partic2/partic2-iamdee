@@ -28,16 +28,27 @@ define(['your-dependency'], function (yourDependency) {
 });
 ```
 
+To add custom ScriptLoader
+
+```js
+class MyScriptLoader implements Iamdee.ScriptLoader{
+    //Your Loader
+}
+define.amd.scriptLoaders.push(new MyScriptLoader())
+```
+
 ## Supported Features
 
 * Named modules
 * Anonymous modules
 * `baseUrl` config
+* requirejs.getDefined, requirejs.getFailed and requirejs.undef
 
 ## Browser Support
 
 * Evergreen (Chrome, Firefox, Opera, Safari, Edge)
 * Web worker
+* Service worker
 * Extensible for other runtime by implementing ScriptLoader and push/unshift into define.amd.scriptLoaders
 
 
