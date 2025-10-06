@@ -6,14 +6,14 @@ namespace Iamdee {
     getDefiningModule():string|null;
   }
 
-  export interface NodeCreatedCallback {
+  export interface ScriptNodeCreatedCallback {
     (el: Element): void;
   }
 
   export interface Config {
     baseUrl?: string;
     urlArgs?: string;
-    onNodeCreated?: NodeCreatedCallback;
+    onNodeCreated?: ScriptNodeCreatedCallback;
     IAMDEE_PRODUCTION_BUILD?:boolean;
     //importScripts is a little weird in service worker.
     //So we use config.serviceWorkerFetch(set to globalThis.fetch by default) in service worker to load script by default.
@@ -104,7 +104,7 @@ namespace Iamdee {
   } as Iamdee.Config;
   function panic(message: string) {
     if (!config1.IAMDEE_PRODUCTION_BUILD) {
-      throw Error(message);
+      throw Error('[IAMDEE ERROR]:'+message);
     }
   }
   class HTMLTagScriptLoader implements Iamdee.ScriptLoader{
@@ -116,7 +116,7 @@ namespace Iamdee {
       el.async=true;
       el.src = url;
       el.onerror = function(err) {
-        done(new Error(err.toString()));
+        done(new Error('HTML script node load failed.'));
       };
       el.onload = function() {
         done(null);
@@ -284,13 +284,7 @@ namespace Iamdee {
         "Can not double resolve module " + currentModule.moduleState
       );
     }
-    // This makes sure script errors are reported
-    // to console and any custom onerror handlers
-    if (module.moduleState == ModuleState.ERROR) {
-      setTimeout(function() {
-        throw module.moduleError;
-      });
-    }
+    
     moduleMap[id] = module;
     currentModule.callbacks.map(function(cb) {
       cb(module);
@@ -358,7 +352,7 @@ namespace Iamdee {
       if (isModuleId(moduleIdOrDependencyPathList)) {
         const module = moduleMap[moduleIdOrDependencyPathList];
         if (!module || module.moduleState !== ModuleState.INITIALIZED) {
-          throw Error("#3 " + moduleIdOrDependencyPathList);
+          throw Error("[IAMDEE ERROR]:dependecies not resolved yet. require module: "+moduleIdOrDependencyPathList);
         }
         return module.exports;
       }
@@ -409,7 +403,7 @@ namespace Iamdee {
                 );
               }
               if (module.moduleState == ModuleState.ERROR) {
-                throw Error("#4 " + id);
+                throw new Error('[IAMDEE ERROR]: resolve module failed. module:'+id+', reason:'+module.moduleError.toString());
               }
               return module.exports;
             });
@@ -493,7 +487,7 @@ namespace Iamdee {
       }else{
         resolveModule(id, {
           moduleState: ModuleState.ERROR,
-          moduleError: Error("#5 " + loaderError.map(v=>v.toString()).join(','))
+          moduleError: new Error("[IAMDEE ERROR]:Module not found." + loaderError.map(v=>v.toString()).join(','))
         });
       }
     }
@@ -569,7 +563,7 @@ namespace Iamdee {
         if(expectedModuleId!=null)break;
       }
       if (!expectedModuleId) {
-        throw Error("#1");
+        throw Error("[IAMDEE ERROR]:Module id is required.");
       }
       if (isAnonymousDefineWithDependencies(args)) {
         doDefine(expectedModuleId, args[0], args[1]);
