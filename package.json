@@ -1,15 +1,13 @@
 {
   "name": "@partic2/iamdee",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Small and extensible AMD loader. fork from https://github.com/grassator/iamdee",
   "main": "dist/index.min.js",
   "scripts": {
-    "prepublishOnly": "npm run lint && npm run build && npm run test",
     "clean": "rm -rf ./dist/",
     "ci": "npm run lint && npm run build && npm test",
     "build": "tsc",
-    "test": "intern config=@min && intern config=@requirejs",
-    "lint": "tslint --project ."
+    "test": "intern config=@min && intern config=@requirejs"
   },
   "files": [
     "dist/index.d.ts",
